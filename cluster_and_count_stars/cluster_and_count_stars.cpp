@@ -2,6 +2,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <iostream>
+#include <algorithm>
 
 
 using namespace cv;
@@ -72,6 +73,18 @@ bool compareDistances(elementDistance i1, elementDistance i2)
     return (i1.distance < i2.distance);
 }
 
+
+bool compareCoordinatesX(Point i1, Point i2)
+{
+    return i1.x * i1.x + i1.y * i1.y < i2.x* i2.x + i2.y * i2.y;
+}
+
+bool compareCoordinatesY(Point i1, Point i2)
+{
+    return (i1.y < i2.y);
+}
+
+
 void getCountours(Mat imgDil, Mat img)
 {
     vector<vector<Point>> contours;
@@ -100,7 +113,28 @@ void getCountours(Mat imgDil, Mat img)
         centers.push_back(center);
     }
 
-    for (int i = 0; i < centers.size(); i++) {
+    sort(centers.begin(), centers.end(), compareCoordinatesX);
+
+    //for (int i = 0; i < centers.size(); i++) {
+    //    circle(img, Point(centers[i].x, centers[i].y), 5, (255, 255, 255));
+    //    putText(img, to_string(i), Point(centers[i].x - 2, centers[i].y - 2), FONT_HERSHEY_SIMPLEX,1,(0,255,242));
+
+    //    vector<Point> four_elements;
+    //    four_elements.push_back(centers[i]);
+    //    four_elements.push_back(centers[i+1]);
+    //    four_elements.push_back(centers[i+2]);
+    //    four_elements.push_back(centers[i+3]);
+    //    i = i + 4;
+    //    const Point* pts = (const cv::Point*)Mat(four_elements).data;
+    //    int npts = Mat(four_elements).rows;
+
+    //    polylines(img, &pts, &npts, 1, true, Scalar(255, 0, 0));
+
+    //    imshow("cluster stars", img);
+    //    waitKey();
+    //}
+    for (int i = 0; i < 5; i++) {
+        cout << "center size:  " << centers.size() << endl;
         for (int j = 0; j < centers.size(); j++) {
             if (i != j) {
                 double dist = distanceCalculate(centers[i].x, centers[i].y, centers[j].x, centers[j].y);
@@ -116,19 +150,38 @@ void getCountours(Mat imgDil, Mat img)
         }
         vector<Point> four_elements;
         four_elements.push_back(centers[distanceStars[0].i]);
+        four_elements.push_back(centers[distanceStars[0].j]);
         four_elements.push_back(centers[distanceStars[1].j]);
         four_elements.push_back(centers[distanceStars[2].j]);
-        four_elements.push_back(centers[distanceStars[3].j]);
+
+        sort(four_elements.begin(), four_elements.end(), compareCoordinatesX);
+ 
+        auto x1 = min(min(four_elements[0].x, four_elements[1].x), min(four_elements[2].x, four_elements[3].x));//top-left pt. is the leftmost of the 4 points
+        auto x2 = max(max(four_elements[0].x, four_elements[1].x), max(four_elements[2].x, four_elements[3].x));//bottom-right pt. is the rightmost of the 4 points
+        auto y1 = min(min(four_elements[0].y, four_elements[1].y), min(four_elements[2].y, four_elements[3].y));//top-left pt. is the uppermost of the 4 points
+        auto y2 = max(max(four_elements[0].y, four_elements[1].y), max(four_elements[2].y, four_elements[3].y));//bottom-right pt. is the lowermost of the 4 points
 
         const Point* pts = (const cv::Point*)Mat(four_elements).data;
         int npts = Mat(four_elements).rows;
 
-        polylines(img, &pts, &npts, 1, true, Scalar(255, 0, 0));
+        //polylines(img, &pts, &npts, 1, true, Scalar(255, 0, 0));
+        //circle(img, Point(centers[distanceStars[0].i].x, centers[distanceStars[0].i].y), 5, (255, 255, 255));
+
+        rectangle(img, Point(x1-5, y1-5), Point(x2+5, y2+5),(0,22,242));
         imshow("cluster stars", img);
         waitKey();
 
-        distanceStars.pop_back();
+        centers.erase(centers.begin() + distanceStars[0].i);
+        centers.erase(centers.begin() + distanceStars[0].j);
+        centers.erase(centers.begin() + distanceStars[1].j);
+        centers.erase(centers.begin() + distanceStars[2].j);
+
+        distanceStars.clear();
+        four_elements.clear();
+        cout << "center size:  " << centers.size() << endl;
+        int j = 0;
     }
+
 
 }
 
