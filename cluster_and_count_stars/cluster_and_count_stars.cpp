@@ -112,6 +112,10 @@ void getCountours(Mat imgDil, Mat img)
         Point center(M.m10 / M.m00, M.m01 / M.m00);
         centers.push_back(center);
     }
+    cout << "center size: ******************************* " << centers.size() << endl;
+    centers.erase(unique(centers.begin(), centers.end()), centers.end());
+    cout << "center size: ///////////////////////////////////////// " << centers.size() << endl;
+
 
     sort(centers.begin(), centers.end(), compareCoordinatesX);
 
@@ -133,8 +137,9 @@ void getCountours(Mat imgDil, Mat img)
     //    imshow("cluster stars", img);
     //    waitKey();
     //}
-    for (int i = 0; i < 5; i++) {
-        cout << "center size:  " << centers.size() << endl;
+    int counter = 0;
+    for (int i = 0; i < centers.size(); i++) {
+        cout << "center size first for:  " << centers.size() << endl;
         for (int j = 0; j < centers.size(); j++) {
             if (i != j) {
                 double dist = distanceCalculate(centers[i].x, centers[i].y, centers[j].x, centers[j].y);
@@ -142,46 +147,63 @@ void getCountours(Mat imgDil, Mat img)
             }
         }
         sort(distanceStars.begin(), distanceStars.end(), compareDistances);
+        if (distanceStars.size() >= 4) {
+            for (int a = 0; a < 3; a++)
+            {
+                cout << distanceStars[a].i << ", " << distanceStars[a].j
+                    << ", " << distanceStars[a].distance << "\n" << endl;
+            }
 
-        for (int a = 0; a < distanceStars.size(); a++)
-        {
-            cout << distanceStars[a].i << ", " << distanceStars[a].j
-                << ", " << distanceStars[a].distance << endl;
+            cout << centers[distanceStars[0].i] << ", " << centers[distanceStars[0].j]
+                << ", " << centers[distanceStars[1].j] << ", " << centers[distanceStars[2].j] << endl;
+
+            vector<Point> four_elements;
+            cout << "ıshfye8rg8934rtherwhbf   " << centers[distanceStars[0].i] << endl;
+            four_elements.push_back(centers[distanceStars[0].i]);
+            four_elements.push_back(centers[distanceStars[0].j]);
+            four_elements.push_back(centers[distanceStars[1].j]);
+            four_elements.push_back(centers[distanceStars[2].j]);
+
+            sort(four_elements.begin(), four_elements.end(), compareCoordinatesX);
+
+            auto x1 = min(min(four_elements[0].x, four_elements[1].x), min(four_elements[2].x, four_elements[3].x));//top-left pt. is the leftmost of the 4 points
+            auto x2 = max(max(four_elements[0].x, four_elements[1].x), max(four_elements[2].x, four_elements[3].x));//bottom-right pt. is the rightmost of the 4 points
+            auto y1 = min(min(four_elements[0].y, four_elements[1].y), min(four_elements[2].y, four_elements[3].y));//top-left pt. is the uppermost of the 4 points
+            auto y2 = max(max(four_elements[0].y, four_elements[1].y), max(four_elements[2].y, four_elements[3].y));//bottom-right pt. is the lowermost of the 4 points
+
+            rectangle(img, Point(x1 - 5, y1 - 5), Point(x2 + 5, y2 + 5), Scalar(0, 22, 242));
+            //imshow("cluster stars", img);
+            //waitKey();
+            counter += 1;
+
+            cout << "index:  " << distanceStars[0].i << centers[distanceStars[0].i] << endl;
+            cout << "index:  " << distanceStars[0].j << centers[distanceStars[0].j] << endl;
+            cout << "index:  " << distanceStars[1].j << centers[distanceStars[1].j] << endl;
+            cout << "index:  " << distanceStars[2].j << centers[distanceStars[2].j] << endl;
+
+            
+            //delete by value
+            Point first_coordinate = centers[distanceStars[0].i];
+            Point second_coordinate = centers[distanceStars[0].j];
+            Point third_coordinate = centers[distanceStars[1].j];
+            Point fourth_coordinate = centers[distanceStars[2].j];
+
+            
+            centers.erase(std::find(centers.begin(), centers.end(), first_coordinate));
+            centers.erase(std::find(centers.begin(), centers.end(), second_coordinate));
+            centers.erase(std::find(centers.begin(), centers.end(), third_coordinate));
+            centers.erase(std::find(centers.begin(), centers.end(), fourth_coordinate));
+
+
+            distanceStars.clear();
+            four_elements.clear();
+            cout << "center size:  " << centers.size() << endl;
         }
-        vector<Point> four_elements;
-        four_elements.push_back(centers[distanceStars[0].i]);
-        four_elements.push_back(centers[distanceStars[0].j]);
-        four_elements.push_back(centers[distanceStars[1].j]);
-        four_elements.push_back(centers[distanceStars[2].j]);
 
-        sort(four_elements.begin(), four_elements.end(), compareCoordinatesX);
- 
-        auto x1 = min(min(four_elements[0].x, four_elements[1].x), min(four_elements[2].x, four_elements[3].x));//top-left pt. is the leftmost of the 4 points
-        auto x2 = max(max(four_elements[0].x, four_elements[1].x), max(four_elements[2].x, four_elements[3].x));//bottom-right pt. is the rightmost of the 4 points
-        auto y1 = min(min(four_elements[0].y, four_elements[1].y), min(four_elements[2].y, four_elements[3].y));//top-left pt. is the uppermost of the 4 points
-        auto y2 = max(max(four_elements[0].y, four_elements[1].y), max(four_elements[2].y, four_elements[3].y));//bottom-right pt. is the lowermost of the 4 points
-
-        const Point* pts = (const cv::Point*)Mat(four_elements).data;
-        int npts = Mat(four_elements).rows;
-
-        //polylines(img, &pts, &npts, 1, true, Scalar(255, 0, 0));
-        //circle(img, Point(centers[distanceStars[0].i].x, centers[distanceStars[0].i].y), 5, (255, 255, 255));
-
-        rectangle(img, Point(x1-5, y1-5), Point(x2+5, y2+5),(0,22,242));
-        imshow("cluster stars", img);
-        waitKey();
-
-        centers.erase(centers.begin() + distanceStars[0].i);
-        centers.erase(centers.begin() + distanceStars[0].j);
-        centers.erase(centers.begin() + distanceStars[1].j);
-        centers.erase(centers.begin() + distanceStars[2].j);
-
-        distanceStars.clear();
-        four_elements.clear();
-        cout << "center size:  " << centers.size() << endl;
-        int j = 0;
     }
-
+    cout << "rectangle count:  " << counter << endl;
+    rectangle(img, Point(45, 26), Point(320, 60), Scalar(0, 0, 255), FILLED);
+    putText(img, "group count: " + to_string(counter), Point(50, 50), FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
 
 }
 
