@@ -2,7 +2,6 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <iostream>
-#include <algorithm> // for find()
 
 
 using namespace cv;
@@ -14,7 +13,7 @@ int threshold_type = 3;
 int const max_value = 255;
 int const max_type = 4;
 int const max_binary_value = 255;
-Mat image, image_gray, binary_image, 
+Mat image, image_gray, binary_image,
 morph_binary_image, morph_ero_di_image, morph_open_close_image;
 const char* window_name = "Threshold and Morphology";
 const char* trackbar_value = "Thresh";
@@ -39,20 +38,20 @@ double distanceCalculate(double x1, double y1, double x2, double y2) {
 }
 
 void Threshold_and_Morphology_Operations(int, void*)
-{   
+{
 
     threshold(image_gray, binary_image, threshold_value, max_binary_value, 3);
-    
+
     /*
     MORPH_ERODE = 0
     MORPH_DILATE = 1
-    MORPH_OPEN = 2 
+    MORPH_OPEN = 2
     MORPH_CLOSE = 3
    */
     int operation_1 = morph_operator_1;
     int operation_2 = morph_operator_2;
-    Mat element_1 = getStructuringElement(0, Size(2 * morph_size_1 + 1, 2 * morph_size_1 + 1), 
-                                        Point(morph_size_1, morph_size_1));
+    Mat element_1 = getStructuringElement(0, Size(2 * morph_size_1 + 1, 2 * morph_size_1 + 1),
+        Point(morph_size_1, morph_size_1));
     Mat element_2 = getStructuringElement(0, Size(2 * morph_size_2 + 1, 2 * morph_size_2 + 1),
         Point(morph_size_2, morph_size_2));
 
@@ -105,7 +104,7 @@ void getCountours(Mat imgDil, Mat img)
         for (int j = 0; j < centers.size(); j++) {
             if (i != j) {
                 double dist = distanceCalculate(centers[i].x, centers[i].y, centers[j].x, centers[j].y);
-                distanceStars.push_back({i, j, dist});                
+                distanceStars.push_back({ i,j,dist });
             }
         }
         sort(distanceStars.begin(), distanceStars.end(), compareDistances);
@@ -115,6 +114,20 @@ void getCountours(Mat imgDil, Mat img)
             cout << distanceStars[a].i << ", " << distanceStars[a].j
                 << ", " << distanceStars[a].distance << endl;
         }
+        vector<Point> four_elements;
+        four_elements.push_back(centers[distanceStars[0].i]);
+        four_elements.push_back(centers[distanceStars[1].j]);
+        four_elements.push_back(centers[distanceStars[2].j]);
+        four_elements.push_back(centers[distanceStars[3].j]);
+
+        const Point* pts = (const cv::Point*)Mat(four_elements).data;
+        int npts = Mat(four_elements).rows;
+
+        polylines(img, &pts, &npts, 1, true, Scalar(255, 0, 0));
+        imshow("cluster stars", img);
+        waitKey();
+
+        distanceStars.pop_back();
     }
 
 }
@@ -134,7 +147,7 @@ int main(int argc, char** argv)
     createTrackbar(trackbar_value,
         window_name, &threshold_value,
         max_value, Threshold_and_Morphology_Operations); // Create a Trackbar to choose Threshold value 180 işimi gördü
-    createTrackbar("Erode-Dilate", 
+    createTrackbar("Erode-Dilate",
         window_name, &morph_operator_1, 1, Threshold_and_Morphology_Operations);
     createTrackbar("Kernel1", window_name,
         &morph_size_1, max_kernel_size,
@@ -148,8 +161,8 @@ int main(int argc, char** argv)
     waitKey();
     imshow("binary", binary_image);
     waitKey();
-	getCountours(binary_image, image);
+    getCountours(binary_image, image);
     imshow("countor", image);
     waitKey();
     return 0;
-} 
+}
