@@ -2,7 +2,6 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <iostream>
-#include <algorithm> // for find()
 
 
 using namespace cv;
@@ -105,7 +104,7 @@ void getCountours(Mat imgDil, Mat img)
         for (int j = 0; j < centers.size(); j++) {
             if (i != j) {
                 double dist = distanceCalculate(centers[i].x, centers[i].y, centers[j].x, centers[j].y);
-                distanceStars.push_back({i, j, dist});                
+                distanceStars.push_back({i,j,dist});                
             }
         }
         sort(distanceStars.begin(), distanceStars.end(), compareDistances);
@@ -115,6 +114,20 @@ void getCountours(Mat imgDil, Mat img)
             cout << distanceStars[a].i << ", " << distanceStars[a].j
                 << ", " << distanceStars[a].distance << endl;
         }
+        vector<Point> four_elements;
+        four_elements.push_back(centers[distanceStars[0].i]);
+        four_elements.push_back(centers[distanceStars[1].j]);
+        four_elements.push_back(centers[distanceStars[2].j]);
+        four_elements.push_back(centers[distanceStars[3].j]);
+
+        const Point* pts = (const cv::Point*)Mat(four_elements).data;
+        int npts = Mat(four_elements).rows;
+
+        polylines(img, &pts, &npts, 1, true, Scalar(255, 0, 0));
+        imshow("cluster stars", img);
+        waitKey();
+
+        distanceStars.pop_back();
     }
 
 }
