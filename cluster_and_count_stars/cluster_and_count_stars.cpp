@@ -9,30 +9,29 @@ using namespace cv;
 using std::cout;
 using namespace std;
 
-int threshold_value = 0;
-int threshold_type = 3;
+Mat image, image_gray, binary_image;
+int threshold_value = 204; //optimum threshold
 int const max_value = 255;
-int const max_type = 4;
 int const max_binary_value = 255;
-Mat image, image_gray, binary_image,
-morph_binary_image, morph_ero_di_image, morph_open_close_image;
 const char* window_name = "Threshold and Morphology";
 const char* trackbar_value = "Thresh";
+const char* first_morp_bar = "Ero-Di"; //Erode-Dilate
+const char* second_morp_bar = "Open-Close";
+const char* kernel_1 = "Kernel1"; //Unforget 2n+1
+const char* kernel_2 = "Kernel2";
 
-
-int morph_size_1 = 0;
-int morph_size_2 = 0;
-int morph_operator_1 = 0;
+int kernel_size_1 = 1;// 2n+1=3 optimum structing element size
+int kernel_size_2 = 0;
+int morph_operator_1 = 1; // Dilate is perfect solving in this case after thresold
 int morph_operator_2 = 0;
-int const max_operator = 3;
 int const max_kernel_size = 21;
 
 double distanceCalculate(double x1, double y1, double x2, double y2) {
-    double x = x1 - x2; //calculating number to square in next step
+    double x = x1 - x2; 
     double y = y1 - y2;
     double dist;
 
-    dist = pow(x, 2) + pow(y, 2);       //calculating Euclidean distance
+    dist = pow(x, 2) + pow(y, 2);//calculating Euclidean distance
     dist = sqrt(dist);
 
     return dist;
@@ -40,7 +39,6 @@ double distanceCalculate(double x1, double y1, double x2, double y2) {
 
 void Threshold_and_Morphology_Operations(int, void*)
 {
-
     threshold(image_gray, binary_image, threshold_value, max_binary_value, 3);
 
     /*
@@ -51,10 +49,10 @@ void Threshold_and_Morphology_Operations(int, void*)
    */
     int operation_1 = morph_operator_1;
     int operation_2 = morph_operator_2;
-    Mat element_1 = getStructuringElement(0, Size(2 * morph_size_1 + 1, 2 * morph_size_1 + 1),
-        Point(morph_size_1, morph_size_1));
-    Mat element_2 = getStructuringElement(0, Size(2 * morph_size_2 + 1, 2 * morph_size_2 + 1),
-        Point(morph_size_2, morph_size_2));
+    Mat element_1 = getStructuringElement(0, Size(2 * kernel_size_1 + 1, 2 * kernel_size_1 + 1),
+        Point(kernel_size_1, kernel_size_1));
+    Mat element_2 = getStructuringElement(0, Size(2 * kernel_size_2 + 1, 2 * kernel_size_2 + 1),
+        Point(kernel_size_2, kernel_size_2));
 
     morphologyEx(binary_image, binary_image, operation_1, element_1);
     morphologyEx(binary_image, binary_image, operation_2, element_2);
@@ -62,129 +60,83 @@ void Threshold_and_Morphology_Operations(int, void*)
 
 }
 
-struct elementDistance
+struct elementDistance // To be used when keeping the distances of the stars from each other
 {
     int i, j;
     double distance;
 };
 
-bool compareDistances(elementDistance i1, elementDistance i2)
+bool compareDistances(elementDistance i1, elementDistance i2) // To be used while sorting measured distances
 {
     return (i1.distance < i2.distance);
 }
 
-
-bool compareCoordinatesX(Point i1, Point i2)
+bool compareCoordinatesX(Point i1, Point i2) // To be used while sorting coordinates of centers of stars
 {
     return i1.x * i1.x + i1.y * i1.y < i2.x* i2.x + i2.y * i2.y;
 }
 
-bool compareCoordinatesY(Point i1, Point i2)
-{
-    return (i1.y < i2.y);
-}
 
-
-void getCountours(Mat imgDil, Mat img)
+void getCountoursAndClusterStars(Mat imgDil, Mat img)
 {
     vector<vector<Point>> contours;
-    vector<Vec4i> hiearchy;
+    vector<Vec4i> hiearchy; 
     vector<Moments> M(contours.size());
     vector<Point> centers;
+    vector<Point> four_stars_after_calculate_distance;
 
-    findContours(imgDil, contours, hiearchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-    drawContours(img, contours, -1, Scalar(255, 0, 255), 2);
-
-    vector<Rect> boundRect(contours.size());
-
+    findContours(imgDil, contours, hiearchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE); // find contours on binary image
+    drawContours(img, contours, -1, Scalar(255, 0, 255), 2); //draw contours arround stars
 
     vector<elementDistance> distanceStars;
 
-
-
-
-    for (int i = 0; i < contours.size(); i++) {
-        boundRect[i] = boundingRect(contours[i]);
-    }
-
-    for (int i = 0; i < contours.size(); i++) {
+    for (int i = 0; i < contours.size(); i++) {  // Finded centers of stars
         Moments M = moments(contours[i]);
         Point center(M.m10 / M.m00, M.m01 / M.m00);
         centers.push_back(center);
     }
-    cout << "center size: ******************************* " << centers.size() << endl;
-    centers.erase(unique(centers.begin(), centers.end()), centers.end());
-    cout << "center size: ///////////////////////////////////////// " << centers.size() << endl;
 
-
+    centers.erase(unique(centers.begin(), centers.end()), centers.end()); //deleted duplicate values
     sort(centers.begin(), centers.end(), compareCoordinatesX);
 
-    //for (int i = 0; i < centers.size(); i++) {
-    //    circle(img, Point(centers[i].x, centers[i].y), 5, (255, 255, 255));
-    //    putText(img, to_string(i), Point(centers[i].x - 2, centers[i].y - 2), FONT_HERSHEY_SIMPLEX,1,(0,255,242));
-
-    //    vector<Point> four_elements;
-    //    four_elements.push_back(centers[i]);
-    //    four_elements.push_back(centers[i+1]);
-    //    four_elements.push_back(centers[i+2]);
-    //    four_elements.push_back(centers[i+3]);
-    //    i = i + 4;
-    //    const Point* pts = (const cv::Point*)Mat(four_elements).data;
-    //    int npts = Mat(four_elements).rows;
-
-    //    polylines(img, &pts, &npts, 1, true, Scalar(255, 0, 0));
-
-    //    imshow("cluster stars", img);
-    //    waitKey();
-    //}
-    int clustered_counter = 0;
+    int clustered_counter = 0; 
     int unclustered_counter = 0;
 
-    for (int i = 0; i < centers.size(); i++) {
-        cout << "center size first for:  " << centers.size() << endl;
+    for (int i = 0; i < centers.size(); i++) { // Finded nearest stars index by index
         for (int j = 0; j < centers.size(); j++) {
             if (i != j) {
-                double dist = distanceCalculate(centers[i].x, centers[i].y, centers[j].x, centers[j].y);
+                double dist = distanceCalculate(centers[i].x, centers[i].y, centers[j].x, centers[j].y); //Calculate distance
                 distanceStars.push_back({ i,j,dist });
             }
         }
-        sort(distanceStars.begin(), distanceStars.end(), compareDistances);
-        //if (distanceStars.size() >= 4) {
-        for (int a = 0; a < 3; a++)
+        sort(distanceStars.begin(), distanceStars.end(), compareDistances); //Sorting distances
+
+        for (int a = 0; a < 3; a++) //Print distance and indexes
         {
             cout << distanceStars[a].i << ", " << distanceStars[a].j
                 << ", " << distanceStars[a].distance << "\n" << endl;
         }
 
-        cout << centers[distanceStars[0].i] << ", " << centers[distanceStars[0].j]
-            << ", " << centers[distanceStars[1].j] << ", " << centers[distanceStars[2].j] << endl;
+        four_stars_after_calculate_distance.push_back(centers[distanceStars[0].i]); // Use top 4 centers of star
+        four_stars_after_calculate_distance.push_back(centers[distanceStars[0].j]); // Find coordinates surrounding 4 stars
+        four_stars_after_calculate_distance.push_back(centers[distanceStars[1].j]);
+        four_stars_after_calculate_distance.push_back(centers[distanceStars[2].j]);
 
-        vector<Point> four_elements;
-        cout << "ıshfye8rg8934rtherwhbf   " << centers[distanceStars[0].i] << endl;
-        four_elements.push_back(centers[distanceStars[0].i]);
-        four_elements.push_back(centers[distanceStars[0].j]);
-        four_elements.push_back(centers[distanceStars[1].j]);
-        four_elements.push_back(centers[distanceStars[2].j]);
+        sort(four_stars_after_calculate_distance.begin(), four_stars_after_calculate_distance.end(), compareCoordinatesX);
 
-        sort(four_elements.begin(), four_elements.end(), compareCoordinatesX);
+        auto x1 = min(min(four_stars_after_calculate_distance[0].x, four_stars_after_calculate_distance[1].x),
+                    min(four_stars_after_calculate_distance[2].x, four_stars_after_calculate_distance[3].x));//top-left pt. is the leftmost of the 4 points
+        auto x2 = max(max(four_stars_after_calculate_distance[0].x, four_stars_after_calculate_distance[1].x),
+                    max(four_stars_after_calculate_distance[2].x, four_stars_after_calculate_distance[3].x));//bottom-right pt. is the rightmost of the 4 points
+        auto y1 = min(min(four_stars_after_calculate_distance[0].y, four_stars_after_calculate_distance[1].y), 
+                    min(four_stars_after_calculate_distance[2].y, four_stars_after_calculate_distance[3].y));//top-left pt. is the uppermost of the 4 points
+        auto y2 = max(max(four_stars_after_calculate_distance[0].y, four_stars_after_calculate_distance[1].y),
+                    max(four_stars_after_calculate_distance[2].y, four_stars_after_calculate_distance[3].y));//bottom-right pt. is the lowermost of the 4 points
 
-        auto x1 = min(min(four_elements[0].x, four_elements[1].x), min(four_elements[2].x, four_elements[3].x));//top-left pt. is the leftmost of the 4 points
-        auto x2 = max(max(four_elements[0].x, four_elements[1].x), max(four_elements[2].x, four_elements[3].x));//bottom-right pt. is the rightmost of the 4 points
-        auto y1 = min(min(four_elements[0].y, four_elements[1].y), min(four_elements[2].y, four_elements[3].y));//top-left pt. is the uppermost of the 4 points
-        auto y2 = max(max(four_elements[0].y, four_elements[1].y), max(four_elements[2].y, four_elements[3].y));//bottom-right pt. is the lowermost of the 4 points
-
-        rectangle(img, Point(x1 - 5, y1 - 5), Point(x2 + 5, y2 + 5), Scalar(0, 22, 242));
-        //imshow("cluster stars", img);
-        //waitKey();
+        rectangle(img, Point(x1 - 5, y1 - 5), Point(x2 + 5, y2 + 5), Scalar(0, 22, 242)); // draw rect that surrounding 4 stars
         clustered_counter += 1;
-
-        cout << "index:  " << distanceStars[0].i << centers[distanceStars[0].i] << endl;
-        cout << "index:  " << distanceStars[0].j << centers[distanceStars[0].j] << endl;
-        cout << "index:  " << distanceStars[1].j << centers[distanceStars[1].j] << endl;
-        cout << "index:  " << distanceStars[2].j << centers[distanceStars[2].j] << endl;
-
             
-        //delete by value
+        //Delete used coordinates of center 
         Point first_coordinate = centers[distanceStars[0].i];
         Point second_coordinate = centers[distanceStars[0].j];
         Point third_coordinate = centers[distanceStars[1].j];
@@ -198,29 +150,26 @@ void getCountours(Mat imgDil, Mat img)
 
 
         distanceStars.clear();
-        four_elements.clear();
-        cout << "center size:  " << centers.size() << endl;
-        cout << "i :  " << i << endl;
+        four_stars_after_calculate_distance.clear();
+
         i = 0;
-        if (centers.size() < 4) {
+        if (centers.size() < 4) { // Draw circle on unclustered stars 
             vector<Point> remaining_elements;
             for (int z = 0; z < centers.size(); z++) {
                 circle(img, centers[z], 5, Scalar(0, 255, 0), 2);
                 unclustered_counter += 1;
             }
-        }
-       // }
-        
+        }        
     }
-    cout << "rectangle count:  " << clustered_counter << endl;
+    cout << "clustered star count:  " << clustered_counter << endl;
     rectangle(img, Point(45, 26), Point(500, 95), Scalar(0, 0, 255), FILLED);
-    putText(img, "clustered star count: " + to_string(clustered_counter), Point(50, 50), FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
-    putText(img, "unclustered star count: " + to_string(unclustered_counter), Point(50, 90), FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
+    putText(img, "clustered star count: " + to_string(clustered_counter), Point(50, 50), 
+        FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
+    putText(img, "unclustered star count: " + to_string(unclustered_counter), Point(50, 90), 
+        FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 2);
+    imshow("Clustered Stars", img);
+    waitKey();
 }
-
-
-
-
 
 
 int main(int argc, char** argv)
@@ -232,23 +181,26 @@ int main(int argc, char** argv)
 
     createTrackbar(trackbar_value,
         window_name, &threshold_value,
-        max_value, Threshold_and_Morphology_Operations); // Create a Trackbar to choose Threshold value 180 işimi gördü
-    createTrackbar("Erode-Dilate",
+        max_value, Threshold_and_Morphology_Operations); // Create a Trackbar to choose binary image
+    createTrackbar(first_morp_bar,
         window_name, &morph_operator_1, 1, Threshold_and_Morphology_Operations);
-    createTrackbar("Kernel1", window_name,
-        &morph_size_1, max_kernel_size,
+    createTrackbar(kernel_1, window_name,
+        &kernel_size_1, max_kernel_size,
         Threshold_and_Morphology_Operations);
-    createTrackbar("Open-Close",
+    createTrackbar(second_morp_bar,
         window_name, &morph_operator_2, 1, Threshold_and_Morphology_Operations);
-    createTrackbar("Kernel2", window_name,
-        &morph_size_2, max_kernel_size,
-        Threshold_and_Morphology_Operations);
+    createTrackbar(kernel_2, window_name,
+        &kernel_size_2, max_kernel_size,
+        Threshold_and_Morphology_Operations); // Trackbar can be turned off. Optimum values comes default.
+
     Threshold_and_Morphology_Operations(0, 0);
     waitKey();
-    imshow("binary", binary_image);
-    waitKey();
-    getCountours(binary_image, image);
-    imshow("countor", image);
-    waitKey();
+
+    //imshow("Binary image which will use", binary_image);
+    //waitKey();
+
+    getCountoursAndClusterStars(binary_image, image);
+
+
     return 0;
 }
